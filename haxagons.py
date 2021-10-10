@@ -62,7 +62,7 @@ def base_hexagon(height):
 
     if height > 0.0:
         tmp_verts = verts.copy()
-        tmp_verts[:, 2] = height
+        tmp_verts[:, 2] = -height
         verts = np.vstack((verts, tmp_verts))
         
         st_idx = len(degs)+1
