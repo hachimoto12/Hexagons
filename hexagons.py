@@ -101,7 +101,7 @@ class HexagonsMesh(bpy.types.Operator):
     bl_idname = "mesh.primitive_hexagons_mesh"
     bl_label = "Hexagons"
     bl_options = {"REGISTER", "UNDO"}
-    bl_description = "Create haxagons mesh."
+    bl_description = "Create hexagons mesh."
 
     row: IntProperty(
         name="Row",
@@ -181,12 +181,12 @@ class HexagonsMesh(bpy.types.Operator):
         y_max *= self.scale
 
         for c in range(self.column):
-            cspace = self.space if c != 0 else 0
+            c_space = self.space if c != 0 else 0
             for r in range(self.row):
-                rspace = self.space if r != 0 else 0
+                r_space = self.space if r != 0 else 0
                 for vert in verts:
-                    x = vert[0] + edge_middle[0]*2*r + rspace*r
-                    y = vert[1] + (y_max*c) + cspace*c
+                    x = vert[0] + edge_middle[0]*2*r + r_space*r
+                    y = vert[1] + (y_max*c) + c_space*c
                     if r % 2 == 0:
                         y += edge_middle[1]*2*c
                     else:
@@ -197,6 +197,7 @@ class HexagonsMesh(bpy.types.Operator):
         for i in range(self.row*self.column):
             for face in faces:
                 bm.faces.new([bm.verts[f+(len(verts)*i)] for f in face])
+        mesh.
 
         bm.to_mesh(mesh)
         mesh.update()
