@@ -197,7 +197,6 @@ class HexagonsMesh(bpy.types.Operator):
         for i in range(self.row*self.column):
             for face in faces:
                 bm.faces.new([bm.verts[f+(len(verts)*i)] for f in face])
-        mesh.
 
         bm.to_mesh(mesh)
         mesh.update()
