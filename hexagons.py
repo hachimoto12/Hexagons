@@ -22,6 +22,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from bpy.props import (
+    BoolProperty,
+    BoolVectorProperty,
+    EnumProperty,
+    IntProperty,
+    FloatProperty,
+    FloatVectorProperty,
+)
 import numpy as np
 import bpy
 import bmesh
@@ -45,13 +53,13 @@ bl_info = {
 def base_hexagon(height):
     rad60 = np.deg2rad(60)
     degs = [rad60*i for i in range(6)]
-    
+
     x = np.cos(degs)
     y = np.sin(degs)
     z = np.zeros(len(degs))
     verts = np.vstack((np.zeros((3)), np.vstack((x, y, z)).T))
-    
-    faces = np.array((
+
+    top_faces = np.array((
         (0, 1, 2),
         (0, 2, 3),
         (0, 3, 4),
@@ -64,37 +72,33 @@ def base_hexagon(height):
         tmp_verts = verts.copy()
         tmp_verts[:, 2] = -height
         verts = np.vstack((verts, tmp_verts))
-        
-        st_idx = len(degs)+1
-        tmp_faces = faces.copy() + st_idx
+
+        st_index = len(degs)+1
+        bottom_faces = top_faces.copy()
+        bottom_faces = np.vstack(
+            (bottom_faces[:, 2], bottom_faces[:, 1], bottom_faces[:, 0])).T + st_index
+
         side_faces = (
-            (1, st_idx+1, st_idx+2),
-            (2, st_idx+2, 1),
-            (2, st_idx+2, st_idx+3),
-            (3, st_idx+3, 2),
-            (3, st_idx+3, st_idx+4),
-            (4, st_idx+4, 3),
-            (4, st_idx+4, st_idx+5),
-            (5, st_idx+5, 4),
-            (5, st_idx+5, st_idx+6),
-            (6, st_idx+6, 5),
-            (6, st_idx+6, st_idx+1),
-            (1, st_idx+1, 6),
+            (1, st_index+1, st_index+2),
+            (2, 1, st_index+2),
+            (2, st_index+2, st_index+3),
+            (3, 2, st_index+3),
+            (3, st_index+3, st_index+4),
+            (4, 3, st_index+4),
+            (4, st_index+4, st_index+5),
+            (5, 4, st_index+5),
+            (5, st_index+5, st_index+6),
+            (6, 5, st_index+6),
+            (6, st_index+6, st_index+1),
+            (1, 6, st_index+1),
         )
-        faces = np.vstack((faces, tmp_faces))
+
+        faces = np.vstack((top_faces, bottom_faces))
         faces = np.vstack((faces, side_faces))
 
-    return verts, faces
+        return verts, faces
 
-
-from bpy.props import (
-    BoolProperty,
-    BoolVectorProperty,
-    EnumProperty,
-    IntProperty,
-    FloatProperty,
-    FloatVectorProperty,
-)
+    return verts, top_faces
 
 
 class HexagonsMesh(bpy.types.Operator):
@@ -139,7 +143,7 @@ class HexagonsMesh(bpy.types.Operator):
         size=20,
         options={"HIDDEN", "SKIP_SAVE"},
     )
-    
+
     align_items = (
         ("WORLD", "World", "world"),
         ("VIEW", "View", "view"),
@@ -162,9 +166,8 @@ class HexagonsMesh(bpy.types.Operator):
 
     def execute(self, context):
         verts, faces = base_hexagon(self.height)
-    
+
         mesh = bpy.data.meshes.new('Hexagons')
-        bm = bmesh.new()
 
         rad30 = np.deg2rad(30)
         edge_middle = self.get_edge_middle(
@@ -180,6 +183,9 @@ class HexagonsMesh(bpy.types.Operator):
         edge_middle *= self.scale
         y_max *= self.scale
 
+        bm = bmesh.new()
+
+        # Vertex
         for c in range(self.column):
             c_space = self.space if c != 0 else 0
             for r in range(self.row):
@@ -193,6 +199,7 @@ class HexagonsMesh(bpy.types.Operator):
                         y += edge_middle[1]*2*(c+1) + self.space/2
                     bm.verts.new([x, y, vert[2]])
 
+        # Face
         bm.verts.ensure_lookup_table()
         for i in range(self.row*self.column):
             for face in faces:
@@ -200,15 +207,17 @@ class HexagonsMesh(bpy.types.Operator):
 
         bm.to_mesh(mesh)
         mesh.update()
-        
+
         from bpy_extras import object_utils
         object_utils.object_data_add(context, mesh, operator=self)
-        
+
         return {'FINISHED'}
 
     def get_edge_middle(self, p1, p2, p3, p4):
-        det = (p1[0] - p2[0]) * (p4[1] - p3[1]) - (p4[0] - p3[0]) * (p1[1] - p2[1])
-        t = ((p4[1] - p3[1]) * (p4[0] - p2[0]) + (p3[0] - p4[0]) * (p4[1] - p2[1])) / det
+        det = (p1[0] - p2[0]) * (p4[1] - p3[1]) - \
+            (p4[0] - p3[0]) * (p1[1] - p2[1])
+        t = ((p4[1] - p3[1]) * (p4[0] - p2[0]) +
+             (p3[0] - p4[0]) * (p4[1] - p2[1])) / det
         x = t * p1[0] + (1.0 - t) * p2[0]
         y = t * p1[1] + (1.0 - t) * p2[1]
         return np.array([x, y, 0])
@@ -221,12 +230,12 @@ def menu_func(self, context):
 def register():
     bpy.utils.register_class(HexagonsMesh)
     bpy.types.VIEW3D_MT_mesh_add.append(menu_func)
-    
-    
+
+
 def unregister():
     bpy.utils.unregister_class(HexagonsMesh)
     bpy.types.VIEW3D_MT_mesh_add.remove(menu_func)
-    
+
 
 if __name__ == '__main__':
     register()
